@@ -66,6 +66,10 @@ function FoinSpider:Start()
   self.shootOrigin_ = nil
   
   self.playerCollider_ = nil
+  
+  if GetPlatform() == "Android" or input.touchEmulation then
+    self.shootCooldown_ = 4.0
+  end
 end
 
 function FoinSpider:DelayedStart()

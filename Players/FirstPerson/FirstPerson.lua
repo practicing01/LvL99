@@ -10,7 +10,7 @@ function FirstPerson:Start()
   self.GYROSCOPE_THRESHOLD = 0.1
   self.TOUCH_SENSITIVITY = 2
   self.YAW_SENSITIVITY = 0.1
-  self.HATYAW_SENSITIVITY = 1.0
+  self.HATYAW_SENSITIVITY = 1.5
   self.MOVE_FORCE = 2.0
   self.INAIR_MOVE_FORCE = 0.02
   self.BRAKE_FORCE = 0.025
@@ -53,7 +53,7 @@ function FirstPerson:DelayedStart()
   local layout = cache:GetResource("XMLFile", "UI/DualJoy.xml")
   self.joyID_ = input:AddScreenJoystick(layout, cache:GetResource("XMLFile", "UI/DefaultStyle.xml"))
   
-  if GetPlatform() == "Android" then
+  if GetPlatform() == "Android" or input.touchEmulation then
     input:SetScreenJoystickVisible(self.joyID_, true)
   else
     input:SetScreenJoystickVisible(self.joyID_, false)
@@ -63,10 +63,10 @@ function FirstPerson:DelayedStart()
   local joystick = input:GetJoystick(self.joyID_)
   
   local vm = VariantMap()
-  vm["Element"] = Variant(joystick.screenJoystick_)
+  vm["Element"] = Variant(joystick.screenJoystick)
   SendEvent("AddGuiTargets", vm)
   
-  vm["Element"] = Variant(joystick.screenJoystick_)
+  vm["Element"] = Variant(joystick.screenJoystick)
   SendEvent("Resized", vm)
   --]]
   self.body_ = self.node:GetComponent("RigidBody")
@@ -99,22 +99,26 @@ function FirstPerson:UpdateTouches(joyID, controls, buttControls)
     if bit.band(joystick:GetHatPosition(1), HAT_UP) ~= 0 then controls:Set(self.CTRL_CAMDOWN, true) end
     if bit.band(joystick:GetHatPosition(1), HAT_DOWN) ~= 0 then controls:Set(self.CTRL_CAMUP, true) end
     --[[
-    if bit.band(joystick:GetHatPosition(1), bit.band(HAT_UP, HAT_LEFT)) ~= 0 then
+    --if bit.band(joystick:GetHatPosition(1), bit.bor(HAT_UP, HAT_LEFT)) ~= 0 then
+    if bit.band(joystick:GetHatPosition(1), HAT_LEFTUP) ~= 0 then
       controls:Set(self.CTRL_CAMUP, true)
       controls:Set(self.CTRL_CAMLEFT, true)
     end
     
-    if bit.band(joystick:GetHatPosition(1), bit.band(HAT_UP, HAT_RIGHT)) ~= 0 then
+    --if bit.band(joystick:GetHatPosition(1), bit.bor(HAT_UP, HAT_RIGHT)) ~= 0 then
+    if bit.band(joystick:GetHatPosition(1), HAT_RIGHTUP) ~= 0 then
       controls:Set(self.CTRL_CAMUP, true)
       controls:Set(self.CTRL_CAMRIGHT, true)
     end
     
-    if bit.band(joystick:GetHatPosition(1), bit.band(HAT_DOWN, HAT_LEFT)) ~= 0 then
+    --if bit.band(joystick:GetHatPosition(1), bit.bor(HAT_DOWN, HAT_LEFT)) ~= 0 then
+    if bit.band(joystick:GetHatPosition(1), HAT_LEFTDOWN) ~= 0 then
       controls:Set(self.CTRL_CAMDOWN, true)
       controls:Set(self.CTRL_CAMLEFT, true)
     end
     
-    if bit.band(joystick:GetHatPosition(1), bit.band(HAT_DOWN, HAT_RIGHT)) ~= 0 then
+    --if bit.band(joystick:GetHatPosition(1), bit.bor(HAT_DOWN, HAT_RIGHT)) ~= 0 then
+    if bit.band(joystick:GetHatPosition(1), HAT_RIGHTDOWN) ~= 0 then
       controls:Set(self.CTRL_CAMDOWN, true)
       controls:Set(self.CTRL_CAMRIGHT, true)
     end
@@ -170,8 +174,14 @@ function FirstPerson:HandleUpdate(eventType, eventData)
   end
   
   if self.body_:GetAngularFactor() == Vector3(0.0, 0.0, 0.0) then
-    self.controls_.pitch = Clamp(self.controls_.pitch, -80.0, 80.0)
+    if GetPlatform() == "Android" or input.touchEmulation then
+      self.controls_.pitch = Clamp(self.controls_.pitch, 0.0, 0.0)
+    else
+      self.controls_.pitch = Clamp(self.controls_.pitch, -80.0, 80.0)
+    end
+  
     self.node.rotation = Quaternion(self.controls_.yaw, Vector3(0.0, 1.0, 0.0))
+    
     self.cameraNode_.rotation = Quaternion(self.controls_.pitch, Vector3(1.0, 0.0, 0.0))
   end
 
@@ -240,18 +250,32 @@ function FirstPerson:FixedUpdate(timeStep)
       self.grabButtDown_ = true
       
       if self.grabOrigin_:GetNumChildren() == 0 then
-        local camera = self.cameraNode_:GetComponent("Camera")
-        local cameraRay = camera:GetScreenRay((graphics.width * 0.5) / graphics.width, (graphics.height * 0.5) / graphics.height)
         
-        local result = LevelScene_:GetComponent("PhysicsWorld"):RaycastSingle(cameraRay, self.grabRayDistance_, 1)
+        if GetPlatform() == "Android" or input.touchEmulation then
+          local bodies = LevelScene_:GetComponent("PhysicsWorld"):GetRigidBodies(Sphere(self.node:GetPosition(), self.grabRayDistance_), 1)
 
-        if result.body ~= nil then
-          result.body:SetEnabled(false)
-          local grabbedNode = result.body:GetNode()
-          self.grabOrigin_:AddChild(grabbedNode)
-          grabbedNode:SetPosition(Vector3(0.0, 0.0, 0.0))
+          for i, v in ipairs(bodies) do
+            v:SetEnabled(false)
+            local grabbedNode = v:GetNode()
+            self.grabOrigin_:AddChild(grabbedNode)
+            grabbedNode:SetPosition(Vector3(0.0, 0.0, 0.0))
+          end
+          
+        else
+          local camera = self.cameraNode_:GetComponent("Camera")
+          local cameraRay = camera:GetScreenRay((graphics.width * 0.5) / graphics.width, (graphics.height * 0.5) / graphics.height)
+
+          local result = LevelScene_:GetComponent("PhysicsWorld"):RaycastSingle(cameraRay, self.grabRayDistance_, 1)
+
+          if result.body ~= nil then
+            result.body:SetEnabled(false)
+            local grabbedNode = result.body:GetNode()
+            self.grabOrigin_:AddChild(grabbedNode)
+            grabbedNode:SetPosition(Vector3(0.0, 0.0, 0.0))
+          end
+
         end
-        
+
       else
         local grabbedNode = self.grabOrigin_:GetChild(0)
         local worldpos = grabbedNode:GetWorldPosition()
