@@ -50,8 +50,11 @@ function FirstPerson:DelayedStart()
   
   self.grabOrigin_ = self.node:GetChild("grabOrigin")
   
-  local layout = cache:GetResource("XMLFile", "UI/DualJoy.xml")
-  self.joyID_ = input:AddScreenJoystick(layout, cache:GetResource("XMLFile", "UI/DefaultStyle.xml"))
+  local dualJoyXMLFile = XMLFile()
+  
+  dualJoyXMLFile:FromString(self:GetDualJoyGuiString())
+  
+  self.joyID_ = input:AddScreenJoystick(dualJoyXMLFile, cache:GetResource("XMLFile", "UI/DefaultStyle.xml"))
   
   if GetPlatform() == "Android" or input.touchEmulation then
     input:SetScreenJoystickVisible(self.joyID_, true)
@@ -59,16 +62,6 @@ function FirstPerson:DelayedStart()
     input:SetScreenJoystickVisible(self.joyID_, false)
   end
   
-  --[[
-  local joystick = input:GetJoystick(self.joyID_)
-  
-  local vm = VariantMap()
-  vm["Element"] = Variant(joystick.screenJoystick)
-  SendEvent("AddGuiTargets", vm)
-  
-  vm["Element"] = Variant(joystick.screenJoystick)
-  SendEvent("Resized", vm)
-  --]]
   self.body_ = self.node:GetComponent("RigidBody")
   self.body_.collisionEventMode = COLLISION_ALWAYS
   
@@ -329,4 +322,84 @@ function FirstPerson:HandleKeyDown(eventType, eventData)
     input:SetMouseVisible(self.mouseVisible_)
   end
   
+end
+
+function FirstPerson:TransformResize(targetRes, targetSize, targetPos)
+		local rootExtent = IntVector2()
+
+		rootExtent.x = graphics:GetWidth()
+		rootExtent.y = graphics:GetHeight()
+
+		local scaledExtent = IntVector2()
+
+		scaledExtent.x = ( targetSize.x *  rootExtent.x ) / targetRes.x
+		scaledExtent.y = ( targetSize.y *  rootExtent.y ) / targetRes.y
+
+		local scaledPosition = IntVector2(
+				( targetPos.x *  rootExtent.x ) / targetRes.x,
+				( targetPos.y *  rootExtent.y ) / targetRes.y)
+
+    return scaledExtent, scaledPosition
+end
+
+function FirstPerson:GetDualJoyGuiString()
+  local rootExtent, rootPosition = self:TransformResize(IntVector2(800, 480), IntVector2(800, 480), IntVector2(0, 0))
+  local hat0Extent, hat0Position = self:TransformResize(IntVector2(800, 480), IntVector2(48, 48), IntVector2(48, 384))
+  local hat1Extent, hat1Position = self:TransformResize(IntVector2(800, 480), IntVector2(48, 48), IntVector2(704, 384))
+  local butt0Extent, butt0Position = self:TransformResize(IntVector2(800, 480), IntVector2(48, 48), IntVector2(704, 288))
+  local butt1Extent, butt1Position = self:TransformResize(IntVector2(800, 480), IntVector2(48, 48), IntVector2(704, 192))
+  
+  return
+  "<?xml version=\"1.0\"?>" ..
+  "<element>" ..
+  "<attribute name=\"Name\" value=\"DualJoy\" />" ..
+  "<attribute name=\"Size\" value=\"" .. rootExtent.x .. " " .. rootExtent.y .. "\" />" ..
+  "<attribute name=\"Variables\">" ..
+  "<variant hash=\"633459751\" type=\"String\" value=\"/home/practicing01/Desktop/Programming/Urho3D/Build/bin/Data/UI/DualJoy.xml\" name=\"fileName\" />" ..
+  "</attribute>" ..
+  "<element type=\"Button\">" ..
+  "<attribute name=\"Name\" value=\"Hat0\" />" ..
+  "<attribute name=\"Position\" value=\"" .. hat0Position.x .. " " .. hat0Position.y .. "\" />" ..
+  "<attribute name=\"Size\" value=\"" .. hat0Extent.x .. " " .. hat0Extent.y .. "\" />" ..
+  "<attribute name=\"Texture\" value=\"Texture2D;Textures/roundSquare.png\" />" ..
+  "<attribute name=\"Image Rect\" value=\"0 0 48 48\" />" ..
+  "<attribute name=\"Border\" value=\"0 0 0 0\" />" ..
+  "<attribute name=\"Hover Image Offset\" value=\"0 0\" />" ..
+  "<attribute name=\"Blend Mode\" value=\"alpha\" />" ..
+  "<attribute name=\"Pressed Image Offset\" value=\"0 0\" />" ..
+  "</element>" ..
+  "<element type=\"Button\">" ..
+  "<attribute name=\"Name\" value=\"Hat1\" />" ..
+  "<attribute name=\"Position\" value=\"" .. hat1Position.x .. " " .. hat1Position.y .. "\" />" ..
+  "<attribute name=\"Size\" value=\"" .. hat1Extent.x .. " " .. hat1Extent.y .. "\" />" ..
+  "<attribute name=\"Texture\" value=\"Texture2D;Textures/roundSquare.png\" />" ..
+  "<attribute name=\"Image Rect\" value=\"0 0 48 48\" />" ..
+  "<attribute name=\"Border\" value=\"0 0 0 0\" />" ..
+  "<attribute name=\"Hover Image Offset\" value=\"0 0\" />" ..
+  "<attribute name=\"Blend Mode\" value=\"alpha\" />" ..
+  "<attribute name=\"Pressed Image Offset\" value=\"0 0\" />" ..
+  "</element>" ..
+  "<element type=\"Button\">" ..
+  "<attribute name=\"Name\" value=\"Button0\" />" ..
+  "<attribute name=\"Position\" value=\"" .. butt0Position.x .. " " .. butt0Position.y .. "\" />" ..
+  "<attribute name=\"Size\" value=\"" .. butt0Extent.x .. " " .. butt0Extent.y .. "\" />" ..
+  "<attribute name=\"Texture\" value=\"Texture2D;Textures/foot.png\" />" ..
+  "<attribute name=\"Image Rect\" value=\"0 0 48 48\" />" ..
+  "<attribute name=\"Border\" value=\"0 0 0 0\" />" ..
+  "<attribute name=\"Hover Image Offset\" value=\"0 0\" />" ..
+  "<attribute name=\"Blend Mode\" value=\"alpha\" />" ..
+  "<attribute name=\"Pressed Image Offset\" value=\"0 0\" />" ..
+  "</element>" ..
+  "<element type=\"Button\">" ..
+  "<attribute name=\"Name\" value=\"Button1\" />" ..
+  "<attribute name=\"Position\" value=\"" .. butt1Position.x .. " " .. butt1Position.y .. "\" />" ..
+  "<attribute name=\"Size\" value=\"" .. butt1Extent.x .. " " .. butt1Extent.y .. "\" />" ..
+  "<attribute name=\"Texture\" value=\"Texture2D;Textures/hand.png\" />" ..
+  "<attribute name=\"Image Rect\" value=\"0 0 48 48\" />" ..
+  "<attribute name=\"Border\" value=\"0 0 0 0\" />" ..
+  "<attribute name=\"Hover Image Offset\" value=\"0 0\" />" ..
+  "<attribute name=\"Blend Mode\" value=\"alpha\" />" ..
+  "<attribute name=\"Pressed Image Offset\" value=\"0 0\" />" ..
+  "</element>" ..
+  "</element>"
 end
