@@ -17,15 +17,45 @@ function GameMenu:Start()
   self.levelPaths_ = {}
 end
 
+function GameMenu:RecursiveResize(ele)
+  local targetSize = ele:GetSize()
+  local targetPos = ele:GetPosition()
+  
+  local scaledSize, scaledPos = self:TransformResize(IntVector2(800, 480), targetSize, targetPos)
+  
+  ele:SetSize(scaledSize)
+  ele:SetPosition(scaledPos)
+  
+  for x = 0, ele:GetNumChildren() - 1, 1 do
+    local child = ele:GetChild(x)
+    self:RecursiveResize(child)
+  end
+end
+
+function GameMenu:TransformResize(targetRes, targetSize, targetPos)
+		local rootExtent = IntVector2()
+
+		rootExtent.x = graphics:GetWidth()
+		rootExtent.y = graphics:GetHeight()
+
+		local scaledExtent = IntVector2()
+
+		scaledExtent.x = ( targetSize.x *  rootExtent.x ) / targetRes.x
+		scaledExtent.y = ( targetSize.y *  rootExtent.y ) / targetRes.y
+
+		local scaledPosition = IntVector2(
+				( targetPos.x *  rootExtent.x ) / targetRes.x,
+				( targetPos.y *  rootExtent.y ) / targetRes.y)
+
+    return scaledExtent, scaledPosition
+end
+
 function GameMenu:DelayedStart()
   local style = cache:GetResource("XMLFile", "UI/DefaultStyle.xml")
   ui.root.defaultStyle = style
 
   self.gameMenu_ = ui:LoadLayout(cache:GetResource("XMLFile", "UI/LvL99GameMenu.xml"))
   self.mainMenuButt_ = ui:LoadLayout(cache:GetResource("XMLFile", "UI/mainMenuButt.xml"))
-
-  ui.root:AddChild(self.gameMenu_)
-  ui.root:AddChild(self.mainMenuButt_)
 
   local vm = VariantMap()
   vm["Element"] = Variant(self.gameMenu_)
@@ -34,6 +64,12 @@ function GameMenu:DelayedStart()
   vm["Element"] = Variant(self.mainMenuButt_)
   SendEvent("AddGuiTargets", vm)
 
+  ui.root:AddChild(self.gameMenu_)
+  ui.root:AddChild(self.mainMenuButt_)
+
+  self:RecursiveResize(self.gameMenu_)
+  self:RecursiveResize(self.mainMenuButt_)
+  
   vm["Element"] = Variant(self.gameMenu_)
   SendEvent("Resized", vm)
 
@@ -243,7 +279,6 @@ function GameMenu:PopulateLists()
     end
 
 end
-  print(rootFolder)
 
 end
 
